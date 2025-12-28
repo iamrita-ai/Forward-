@@ -58,8 +58,8 @@ if __name__ == '__main__':
     
     # Give the bot thread a moment to start
     import time
-    time.sleep(2)
-    print(f"Bot thread status after 2 seconds: {bot_thread.is_alive()}")
+    time.sleep(3)
+    print(f"Bot thread status after 3 seconds: {bot_thread.is_alive()}")
     
     # Start web server
     print("Starting web server...")
