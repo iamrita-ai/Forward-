@@ -6,7 +6,7 @@ import asyncio
 from pyrogram.errors import FloodWait, BadRequest
 from pyrogram.enums import ParseMode
 from config import LOG_CHANNEL, FORCE_SUB_LINK, CONTACT_LINKS, PROGRESS_DELAY
-from app.database import db, get_output_channel
+from app.database import get_output_channel
 from app.progress import progress_for_pyrogram
 from time import time
 
@@ -23,32 +23,30 @@ async def is_user_subscribed(client, message):
         return False
 
 def save_user(user):
+    from app.database import db
     db.users.update_one({"id": user.id}, {
         "$set": {"id": user.id, "username": user.username, "first_name": user.first_name}
     }, upsert=True)
 
 async def check_bot_status(message):
-    status = await db.settings.find_one({"setting": "bot_status"})
-    if status and status.get("status", "on") == "off":
-        if message.from_user.id not in OWNER_IDS:
+    from app.database import get_bot_status
+    status = await get_bot_status()
+    if status == "off":
+        if message.from_user.id not in [int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]:
             await message.reply("🔴 Bot is currently offline. Please try again later.")
             return False
     return True
 
 async def toggle_bot_status(new_status=None):
-    current_status = await db.settings.find_one({"setting": "bot_status"})
-    current = current_status["status"] if current_status else "on"
+    from app.database import get_bot_status, set_bot_status
+    current_status = await get_bot_status()
     
     if new_status:
         final_status = new_status
     else:
-        final_status = "off" if current == "on" else "on"
+        final_status = "off" if current_status == "on" else "on"
     
-    db.settings.update_one(
-        {"setting": "bot_status"},
-        {"$set": {"status": final_status}},
-        upsert=True
-    )
+    await set_bot_status(final_status)
     return final_status
 
 async def forward_media_batch(client, message, chat, start_id, count, task_id):
@@ -76,7 +74,7 @@ async def forward_media_batch(client, message, chat, start_id, count, task_id):
                 # Show progress during download/upload
                 progress_message = await message.reply("Starting...")
                 
-                if msg.document:
+                if hasattr(msg, 'document') and msg.document:
                     sent = await msg.forward(
                         target_chat,
                         progress=progress_for_pyrogram,
@@ -106,4 +104,5 @@ async def forward_media_batch(client, message, chat, start_id, count, task_id):
             break
 
     await progress_msg.edit_text(f"✅ Successfully forwarded {sent_count}/{count} items!")
+    from app.database import db
     db.tasks.delete_one({"task_id": task_id})
