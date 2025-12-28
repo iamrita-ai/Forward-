@@ -1,27 +1,27 @@
 """
 Configuration module for Serena Forward Bot.
-All values can be overridden via environment variables.
+All values are optional and can be overridden via environment variables.
 """
 
 import os
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables from .env file if present
 load_dotenv()
 
 
 class Config:
-    """Bot configuration class with environment variable support."""
+    """Main configuration class with environment variable support."""
     
     # Telegram API Credentials
-    API_ID: int = int(os.getenv("API_ID", "0"))
-    API_HASH: str = os.getenv("API_HASH", "")
-    BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
+    API_ID: int = int(os.environ.get("API_ID", "0"))
+    API_HASH: str = os.environ.get("API_HASH", "")
+    BOT_TOKEN: str = os.environ.get("BOT_TOKEN", "")
     
     # MongoDB Configuration
-    MONGO_DB_URL: str = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017")
-    MONGO_DB_NAME: str = os.getenv("MONGO_DB_NAME", "serena_forward")
+    MONGO_DB_URL: str = os.environ.get("MONGO_DB_URL", "mongodb://localhost:27017")
+    MONGO_DB_NAME: str = os.environ.get("MONGO_DB_NAME", "serena_forward")
     
     # Owner Configuration
     OWNER_IDS: List[int] = [
@@ -29,42 +29,47 @@ class Config:
         6518065496
     ]
     
+    # Add additional owners from environment
+    _extra_owners = os.environ.get("OWNER_IDS", "")
+    if _extra_owners:
+        OWNER_IDS.extend([int(x.strip()) for x in _extra_owners.split(",") if x.strip()])
+    
     # Log Channel
-    LOG_CHANNEL: int = int(os.getenv("LOG_CHANNEL", "-1003286415377"))
+    LOG_CHANNEL: int = int(os.environ.get("LOG_CHANNEL", "-1003286415377"))
     
     # Force Subscription
-    FORCE_SUB_CHANNEL: str = os.getenv("FORCE_SUB_CHANNEL", "serenaunzipbot")
+    FORCE_SUB_CHANNEL: str = os.environ.get("FORCE_SUB_CHANNEL", "serenaunzipbot")
     FORCE_SUB_LINK: str = f"https://t.me/{FORCE_SUB_CHANNEL}"
     
-    # Contact Links
-    OWNER_CONTACT: str = "https://t.me/technicalserena"
-    SUPPORT_USERNAME: str = "@Xioqui_xin"
+    # Owner Contact Links
+    OWNER_CONTACT_1: str = os.environ.get("OWNER_CONTACT_1", "https://t.me/technicalserena")
+    OWNER_CONTACT_2: str = os.environ.get("OWNER_CONTACT_2", "@Xioqui_xin")
     
-    # Bot Settings
-    START_PIC: Optional[str] = os.getenv("START_PIC", None)
-    BOT_START_PIC: Optional[str] = os.getenv("BOT_START_PIC", None)
-    PROGRESS_UPDATE_DELAY: int = int(os.getenv("PROGRESS_UPDATE_DELAY", "7"))
-    MAX_BATCH_LIMIT: int = int(os.getenv("MAX_BATCH_LIMIT", "1000"))
+    # Media Configuration
+    START_PIC: Optional[str] = os.environ.get("START_PIC", None)
+    BOT_START_PIC: Optional[str] = os.environ.get("BOT_START_PIC", None)
     
-    # Flood Wait Handling
-    FLOOD_WAIT_THRESHOLD: int = int(os.getenv("FLOOD_WAIT_THRESHOLD", "60"))
-    
-    # Session Encryption
-    SESSION_ENCRYPTION_KEY: str = os.getenv(
-        "SESSION_ENCRYPTION_KEY", 
-        "default-key-change-in-production-32b"
-    )
+    # Progress & Performance
+    PROGRESS_UPDATE_DELAY: int = int(os.environ.get("PROGRESS_UPDATE_DELAY", "7"))
+    MAX_BATCH_LIMIT: int = int(os.environ.get("MAX_BATCH_LIMIT", "500"))
+    FLOOD_WAIT_MULTIPLIER: float = float(os.environ.get("FLOOD_WAIT_MULTIPLIER", "1.5"))
     
     # Rate Limiting
-    RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "30"))
-    RATE_LIMIT_WINDOW: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
+    RATE_LIMIT_MESSAGES: int = int(os.environ.get("RATE_LIMIT_MESSAGES", "30"))
+    RATE_LIMIT_WINDOW: int = int(os.environ.get("RATE_LIMIT_WINDOW", "60"))
     
-    # Directories
-    DOWNLOAD_DIR: str = os.getenv("DOWNLOAD_DIR", "./downloads")
-    THUMB_DIR: str = os.getenv("THUMB_DIR", "./thumbnails")
-    SESSION_DIR: str = os.getenv("SESSION_DIR", "./sessions")
+    # Session Encryption
+    SESSION_ENCRYPTION_KEY: str = os.environ.get(
+        "SESSION_ENCRYPTION_KEY", 
+        "your-32-byte-secret-key-here!!"
+    )
     
-    # Bot Status
+    # Paths
+    DOWNLOAD_PATH: str = os.environ.get("DOWNLOAD_PATH", "./downloads")
+    THUMB_PATH: str = os.environ.get("THUMB_PATH", "./thumbnails")
+    SESSION_PATH: str = os.environ.get("SESSION_PATH", "./sessions")
+    
+    # Bot State
     BOT_ENABLED: bool = True
     
     @classmethod
@@ -73,10 +78,10 @@ class Config:
         required = ["API_ID", "API_HASH", "BOT_TOKEN", "MONGO_DB_URL"]
         missing = []
         
-        for field in required:
-            value = getattr(cls, field, None)
+        for key in required:
+            value = getattr(cls, key, None)
             if not value or value == "0" or value == "":
-                missing.append(field)
+                missing.append(key)
         
         if missing:
             raise ValueError(f"Missing required configuration: {', '.join(missing)}")
@@ -84,15 +89,11 @@ class Config:
         return True
     
     @classmethod
-    def create_directories(cls) -> None:
-        """Create necessary directories if they don't exist."""
-        for directory in [cls.DOWNLOAD_DIR, cls.THUMB_DIR, cls.SESSION_DIR]:
-            os.makedirs(directory, exist_ok=True)
+    def is_owner(cls, user_id: int) -> bool:
+        """Check if a user is an owner."""
+        return user_id in cls.OWNER_IDS
 
 
-# Validate configuration on import
-try:
-    Config.validate()
-    Config.create_directories()
-except ValueError as e:
-    print(f"Configuration Error: {e}")
+# Create directories if they don't exist
+for path in [Config.DOWNLOAD_PATH, Config.THUMB_PATH, Config.SESSION_PATH]:
+    os.makedirs(path, exist_ok=True)
