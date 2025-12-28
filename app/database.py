@@ -10,59 +10,18 @@ db = None
 
 def connect_db(uri):
     global client, db
+    if not uri:
+        print("⚠️ MongoDB URI not provided")
+        return
+        
     try:
-        client = MongoClient(uri)
-        db = client["serena_bot"]
+        print(f"Connecting to MongoDB...")
+        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
         # Test connection
         client.admin.command('ping')
-        print("✅ Connected to MongoDB successfully!")
+        db = client["serena_bot"]
+        print("✅ MongoDB connected successfully!")
     except Exception as e:
-        print(f"❌ Failed to connect to MongoDB: {e}")
-
-async def add_task(user_id, task_id):
-    db.tasks.insert_one({
-        "task_id": task_id,
-        "user_id": user_id,
-        "created_at": datetime.utcnow()
-    })
-
-async def cancel_task(task_id):
-    db.tasks.delete_one({"task_id": task_id})
-
-async def get_stats():
-    total_users = db.users.count_documents({})
-    return {"total_users": total_users}
-
-async def get_all_users():
-    return list(db.users.find({}, {"_id": 0, "id": 1, "username": 1}))
-
-async def set_output_channel(channel_id):
-    db.settings.update_one(
-        {"setting": "output_channel"},
-        {"$set": {"channel_id": channel_id}},
-        upsert=True
-    )
-
-async def get_output_channel():
-    result = db.settings.find_one({"setting": "output_channel"})
-    return result["channel_id"] if result else None
-
-async def reset_output_channel():
-    db.settings.delete_one({"setting": "output_channel"})
-
-async def get_bot_status():
-    result = db.settings.find_one({"setting": "bot_status"})
-    return result["status"] if result else "on"
-
-async def set_bot_status(status):
-    db.settings.update_one(
-        {"setting": "bot_status"},
-        {"$set": {"status": status}},
-        upsert=True
-    )
-
-async def toggle_bot_status():
-    current_status = await get_bot_status()
-    new_status = "off" if current_status == "on" else "on"
-    await set_bot_status(new_status)
-    return new_status
+        print(f"❌ MongoDB connection failed: {e}")
+        client = None
+        db = None
