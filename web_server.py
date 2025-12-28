@@ -13,27 +13,34 @@ app = Flask(__name__)
 def home():
     return '''
     <h1>🚀 Serena Forward Bot</h1>
-    <p>Bot is running successfully!</p>
-    <p>Status: <span style="color: green;">ONLINE</span></p>
+    <p>Bot service is running!</p>
     <p><a href="/health">Health Check</a></p>
     '''
 
 @app.route('/health')
 def health():
-    return {'status': 'ok', 'bot': 'running', 'timestamp': str(os.time()) if hasattr(os, 'time') else 'unknown'}
+    return {'status': 'ok', 'service': 'running'}
 
 def run_web():
     port = int(os.environ.get('PORT', 10000))
-    print(f"Starting web server on http://0.0.0.0:{port}")
+    print(f"Starting web server on port {port}")
     app.run(host='0.0.0.0', port=port, threaded=True)
 
 if __name__ == '__main__':
+    print("=== SERENA FORWARD BOT ===")
+    print("Loading bot modules...")
+    
     # Import and start bot
-    print("Importing bot...")
-    from app.main import start_bot
+    try:
+        from app.main import start_bot, app as bot_app
+        print("Bot modules loaded successfully")
+        print(f"Bot app object: {bot_app}")
+    except Exception as e:
+        print(f"Error loading bot modules: {e}")
+        exit(1)
     
     # Start bot in separate thread
-    print("Starting Telegram bot in background...")
+    print("Starting Telegram bot in background thread...")
     bot_thread = threading.Thread(target=start_bot)
     bot_thread.daemon = True
     bot_thread.start()
