@@ -6,6 +6,14 @@ from pyrogram import Client
 from config import *
 from app.database import connect_db
 
+# Create the app instance at module level
+app = Client(
+    "serena_forward",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
+
 def check_initial_status():
     try:
         from pymongo import MongoClient
@@ -25,15 +33,8 @@ def start_bot():
     if not check_initial_status():
         return
 
-    app = Client(
-        "serena_forward",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        bot_token=BOT_TOKEN
-    )
-
-    # Import handlers properly
-    import app.handlers
+    # Import handlers after app is created to avoid circular imports
+    from app import handlers
 
     try:
         connect_db(MONGO_URI)
