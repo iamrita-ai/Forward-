@@ -6,6 +6,8 @@ from pyrogram import Client
 from config import *
 from app.database import connect_db
 
+print("Creating bot client...")
+
 # Create the app instance at module level
 app = Client(
     "serena_forward",
@@ -30,6 +32,8 @@ def check_initial_status():
 
 def start_bot():
     """Function to start the bot - called from web_server.py"""
+    print("Starting bot function called...")
+    
     if not check_initial_status():
         return
 
@@ -40,8 +44,4 @@ def start_bot():
     except Exception as e:
         print(f"Error starting bot: {e}")
 
-# Import handlers AFTER creating the app instance
-from app import handlers
-
-if __name__ == "__main__":
-    start_bot()
+print("Main module loaded")
