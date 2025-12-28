@@ -2,18 +2,19 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pyrogram import Client, filters
+from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import *
 from app.utils import (
     forward_media_batch, is_user_subscribed, save_user,
     check_bot_status, toggle_bot_status
 )
+from app.main import app
 
 active_tasks = {}
 
-@Client.on_message(filters.command("start"))
-async def start(client: Client, message: Message):
+@app.on_message(filters.command("start"))
+async def start(client, message: Message):
     if not await check_bot_status(message):
         return
     
@@ -34,8 +35,8 @@ Use:
 👉 `/help` - Get help guide
 """, reply_markup=keyboard)
 
-@Client.on_message(filters.command("batch"))
-async def batch_set(client: Client, message: Message):
+@app.on_message(filters.command("batch"))
+async def batch_set(client, message: Message):
     if not await check_bot_status(message) or not await is_user_subscribed(client, message):
         return
         
@@ -46,8 +47,8 @@ async def batch_set(client: Client, message: Message):
     except IndexError:
         await message.reply("⚠️ Usage: `/batch <channel_username_or_id>`")
 
-@Client.on_message(filters.command("forward"))
-async def forward_files(client: Client, message: Message):
+@app.on_message(filters.command("forward"))
+async def forward_files(client, message: Message):
     if not await check_bot_status(message) or not await is_user_subscribed(client, message):
         return
         
@@ -69,8 +70,8 @@ async def forward_files(client: Client, message: Message):
     await add_task(user_id, task_id)
     await forward_media_batch(client, message, chat, start_id, count, task_id)
 
-@Client.on_message(filters.command("cancel"))
-async def cancel_forward(client: Client, message: Message):
+@app.on_message(filters.command("cancel"))
+async def cancel_forward(client, message: Message):
     if not await check_bot_status(message):
         return
         
@@ -80,8 +81,8 @@ async def cancel_forward(client: Client, message: Message):
     await cancel_task(task_id)
     await message.reply("🛑 Task cancelled successfully.")
 
-@Client.on_message(filters.command("help"))
-async def help_cmd(client: Client, message: Message):
+@app.on_message(filters.command("help"))
+async def help_cmd(client, message: Message):
     if not await check_bot_status(message):
         return
         
@@ -101,8 +102,8 @@ async def help_cmd(client: Client, message: Message):
 6. Only owner can access full features.
 """, reply_markup=keyboard)
 
-@Client.on_message(filters.command("stats"))
-async def stats(client: Client, message: Message):
+@app.on_message(filters.command("stats"))
+async def stats(client, message: Message):
     if not await check_bot_status(message) or message.from_user.id not in OWNER_IDS:
         return await message.reply("🚫 Admin only command.")
         
@@ -115,8 +116,8 @@ async def stats(client: Client, message: Message):
 📥 Active Tasks: {len(active_tasks)}
 """)
 
-@Client.on_message(filters.command("users"))
-async def list_users(client: Client, message: Message):
+@app.on_message(filters.command("users"))
+async def list_users(client, message: Message):
     if not await check_bot_status(message) or message.from_user.id not in OWNER_IDS:
         return await message.reply("🚫 Admin only command.")
         
@@ -125,8 +126,8 @@ async def list_users(client: Client, message: Message):
     response = "\n".join([f"- [{u['username']}](tg://user?id={u['id']}) ({u['id']})" for u in users])
     await message.reply(response, disable_web_page_preview=True)
 
-@Client.on_message(filters.command("broadcast") & filters.user(OWNER_IDS))
-async def broadcast(client: Client, message: Message):
+@app.on_message(filters.command("broadcast") & filters.user(OWNER_IDS))
+async def broadcast(client, message: Message):
     if not await check_bot_status(message):
         return
         
@@ -147,8 +148,8 @@ async def broadcast(client: Client, message: Message):
             
     await message.reply(f"Broadcast completed!\nSuccess: {success}\nFailed: {failed}")
 
-@Client.on_message(filters.command("settings") & filters.user(OWNER_IDS))
-async def settings_menu(client: Client, message: Message):
+@app.on_message(filters.command("settings") & filters.user(OWNER_IDS))
+async def settings_menu(client, message: Message):
     if not await check_bot_status(message):
         return
         
@@ -167,8 +168,8 @@ async def settings_menu(client: Client, message: Message):
     channel_info = f"\nOutput Channel: `{output_channel}`" if output_channel else "\nNo output channel set"
     await message.reply(f"⚙️ Bot Settings:{channel_info}", reply_markup=keyboard)
 
-@Client.on_callback_query()
-async def callback_handler(client: Client, query: CallbackQuery):
+@app.on_callback_query()
+async def callback_handler(client, query: CallbackQuery):
     if query.data == "set_channel":
         await query.message.edit_text("Please send the channel ID where files should be forwarded:")
         # We'll handle the next message in another handler
@@ -186,8 +187,8 @@ async def callback_handler(client: Client, query: CallbackQuery):
         ])
         await query.message.edit_text("⚙️ Bot Settings:", reply_markup=keyboard)
 
-@Client.on_message(filters.private & filters.user(OWNER_IDS) & filters.regex(r"^-?\d+$"))
-async def handle_channel_input(client: Client, message: Message):
+@app.on_message(filters.private & filters.user(OWNER_IDS) & filters.regex(r"^-?\d+$"))
+async def handle_channel_input(client, message: Message):
     try:
         channel_id = int(message.text)
         from app.database import set_output_channel
@@ -196,13 +197,13 @@ async def handle_channel_input(client: Client, message: Message):
     except ValueError:
         await message.reply("Invalid channel ID. Please send a valid numeric ID.")
 
-@Client.on_message(filters.command("on") & filters.user(OWNER_IDS))
-async def turn_on(client: Client, message: Message):
+@app.on_message(filters.command("on") & filters.user(OWNER_IDS))
+async def turn_on(client, message: Message):
     await toggle_bot_status()
     await message.reply("🟢 Bot is now ON!")
 
-@Client.on_message(filters.command("stop") & filters.user(OWNER_IDS))
-async def turn_off(client: Client, message: Message):
+@app.on_message(filters.command("stop") & filters.user(OWNER_IDS))
+async def turn_off(client, message: Message):
     from app.database import set_bot_status
     await set_bot_status("off")
     await message.reply("🔴 Bot is now OFF!")
