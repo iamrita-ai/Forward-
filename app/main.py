@@ -3,65 +3,104 @@ import os
 import asyncio
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pyrogram import Client
+print("=== BOT DIAGNOSTICS ===")
+
+# Test imports first
+try:
+    from pyrogram import Client
+    print("✅ Pyrogram imported successfully")
+except Exception as e:
+    print(f"❌ Pyrogram import failed: {e}")
+    exit(1)
+
 from config import *
 
-print("Creating bot client...")
+print(f"API_ID: {API_ID}")
+print(f"API_HASH length: {len(API_HASH) if API_HASH else 0}")
+print(f"BOT_TOKEN length: {len(BOT_TOKEN) if BOT_TOKEN else 0}")
+
+# Validate credentials
+if not API_ID or API_ID == 0:
+    print("❌ ERROR: API_ID is not set or invalid")
+    exit(1)
+
+if not API_HASH or len(API_HASH) < 30:
+    print("❌ ERROR: API_HASH is not set or invalid")
+    exit(1)
+
+if not BOT_TOKEN or len(BOT_TOKEN) < 30:
+    print("❌ ERROR: BOT_TOKEN is not set or invalid")
+    exit(1)
+
+print("✅ All credentials validated")
 
 # Create the app instance
-app = Client(
-    "serena_forward",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
-)
+print("Creating Pyrogram client...")
+try:
+    app = Client(
+        "serena_forward",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        bot_token=BOT_TOKEN
+    )
+    print("✅ Pyrogram client created successfully")
+except Exception as e:
+    print(f"❌ Pyrogram client creation failed: {e}")
+    import traceback
+    traceback.print_exc()
+    exit(1)
 
-print("Bot client created")
-
-# Import handlers to register them
-from app import handlers
-print("Handlers registered")
+# Import handlers
+print("Importing handlers...")
+try:
+    from app import handlers
+    print("✅ Handlers imported successfully")
+except Exception as e:
+    print(f"❌ Handler import failed: {e}")
+    import traceback
+    traceback.print_exc()
 
 async def start_bot_async():
-    """Async function to start the bot"""
+    """Diagnostic async function to start the bot"""
+    print("🔧 Starting diagnostic bot connection...")
+    
     try:
-        print("Starting bot connection...")
-        
-        # Start the bot first
-        print("Initializing Pyrogram client...")
+        print("🔌 Attempting to connect to Telegram...")
         await app.start()
-        print("✅ Bot connected to Telegram successfully!")
+        print("🎉 SUCCESS! Bot connected to Telegram!")
         
-        # Try to connect to MongoDB (non-critical)
+        # Get bot info
         try:
-            print("Connecting to MongoDB...")
-            from app.database import connect_db
-            connect_db(MONGO_URI)
-            print("✅ Connected to MongoDB")
+            bot_me = await app.get_me()
+            print(f"🤖 Bot info: @{bot_me.username} (ID: {bot_me.id})")
         except Exception as e:
-            print(f"⚠️ MongoDB connection warning (not critical): {e}")
+            print(f"⚠️ Could not get bot info: {e}")
         
-        print("🎉 BOT IS NOW FULLY OPERATIONAL!")
-        print("Waiting for messages...")
+        print("✅ Bot is ready and listening!")
         
-        # Keep bot running
+        # Keep running
+        print("💤 Keeping bot alive...")
         while True:
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
             
     except Exception as e:
-        print(f"❌ Critical error starting bot: {e}")
+        print(f"💥 FATAL ERROR: {e}")
         import traceback
         traceback.print_exc()
+        return False
 
 def start_bot():
-    """Sync wrapper for async bot start"""
+    """Sync wrapper for diagnostic bot start"""
+    print("🔄 Setting up asyncio environment...")
     try:
-        print("Creating asyncio event loop...")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        print("Running bot in event loop...")
-        loop.run_until_complete(start_bot_async())
+        print("✅ Asyncio environment ready")
+        print("🚀 Launching bot...")
+        result = loop.run_until_complete(start_bot_async())
+        return result
     except Exception as e:
-        print(f"❌ Fatal error in bot thread: {e}")
+        print(f"💥 FATAL THREAD ERROR: {e}")
         import traceback
         traceback.print_exc()
+        return False
