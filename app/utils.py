@@ -37,17 +37,12 @@ async def check_bot_status(message):
             return False
     return True
 
-async def toggle_bot_status(new_status=None):
+async def toggle_bot_status():
     from app.database import get_bot_status, set_bot_status
     current_status = await get_bot_status()
-    
-    if new_status:
-        final_status = new_status
-    else:
-        final_status = "off" if current_status == "on" else "on"
-    
-    await set_bot_status(final_status)
-    return final_status
+    new_status = "off" if current_status == "on" else "on"
+    await set_bot_status(new_status)
+    return new_status
 
 async def forward_media_batch(client, message, chat, start_id, count, task_id):
     sent_count = 0
