@@ -5,13 +5,32 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import *
-from app.utils import (
-    forward_media_batch, is_user_subscribed, save_user,
-    check_bot_status, toggle_bot_status
-)
+
+# Import app from main
 from app.main import app
 
 active_tasks = {}
+
+# Import utils functions inside handlers to avoid circular imports
+async def forward_media_batch(client, message, chat, start_id, count, task_id):
+    from app.utils import forward_media_batch as util_forward
+    await util_forward(client, message, chat, start_id, count, task_id)
+
+async def is_user_subscribed(client, message):
+    from app.utils import is_user_subscribed as util_check
+    return await util_check(client, message)
+
+def save_user(user):
+    from app.utils import save_user as util_save
+    util_save(user)
+
+async def check_bot_status(message):
+    from app.utils import check_bot_status as util_check_status
+    return await util_check_status(message)
+
+async def toggle_bot_status():
+    from app.utils import toggle_bot_status as util_toggle
+    return await util_toggle()
 
 @app.on_message(filters.command("start"))
 async def start(client, message: Message):
@@ -37,8 +56,14 @@ Use:
 
 @app.on_message(filters.command("batch"))
 async def batch_set(client, message: Message):
-    if not await check_bot_status(message) or not await is_user_subscribed(client, message):
-        return
+    if not await check_bot_status(message):
+        from app.utils import is_user_subscribed
+        if not await is_user_subscribed(client, message):
+            return
+    else:
+        from app.utils import is_user_subscribed
+        if not await is_user_subscribed(client, message):
+            return
         
     try:
         chat = message.text.split()[1]
@@ -49,8 +74,14 @@ async def batch_set(client, message: Message):
 
 @app.on_message(filters.command("forward"))
 async def forward_files(client, message: Message):
-    if not await check_bot_status(message) or not await is_user_subscribed(client, message):
-        return
+    if not await check_bot_status(message):
+        from app.utils import is_user_subscribed
+        if not await is_user_subscribed(client, message):
+            return
+    else:
+        from app.utils import is_user_subscribed
+        if not await is_user_subscribed(client, message):
+            return
         
     user_id = message.from_user.id
     if user_id not in active_tasks:
@@ -68,6 +99,8 @@ async def forward_files(client, message: Message):
 
     from app.database import add_task
     await add_task(user_id, task_id)
+    
+    from app.utils import forward_media_batch
     await forward_media_batch(client, message, chat, start_id, count, task_id)
 
 @app.on_message(filters.command("cancel"))
@@ -178,6 +211,7 @@ async def callback_handler(client, query: CallbackQuery):
         await reset_output_channel()
         await query.message.edit_text("✅ Output channel has been reset!")
     elif query.data == "toggle_status":
+        from app.utils import toggle_bot_status
         new_status = await toggle_bot_status()
         status_text = "ON" if new_status == "on" else "OFF"
         keyboard = InlineKeyboardMarkup([
@@ -199,6 +233,7 @@ async def handle_channel_input(client, message: Message):
 
 @app.on_message(filters.command("on") & filters.user(OWNER_IDS))
 async def turn_on(client, message: Message):
+    from app.utils import toggle_bot_status
     await toggle_bot_status()
     await message.reply("🟢 Bot is now ON!")
 
