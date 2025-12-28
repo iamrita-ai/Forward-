@@ -32,8 +32,8 @@ def start_bot():
         bot_token=BOT_TOKEN
     )
 
-    # Import handlers after app initialization to avoid circular imports
-    from app.handlers import *
+    # Import handlers properly
+    import app.handlers
 
     try:
         connect_db(MONGO_URI)
