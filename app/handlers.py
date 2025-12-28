@@ -21,20 +21,43 @@ if app:
 
     @app.on_message(filters.command("start"))
     async def start(client, message: Message):
-        print(f"=== RECEIVED /start FROM USER {message.from_user.id} ===")
+        print(f"=== RECEIVED /start FROM USER {message.from_user.id} ({message.from_user.username or 'No username'}) ===")
         try:
-            await message.reply("🎉 Hello! Serena Forward Bot is working perfectly! ✅\n\nSend /test to verify all functions.")
-            print("✅ Response sent successfully")
+            welcome_text = f"""🎉 Hello {message.from_user.first_name}!
+
+✅ Serena Forward Bot is working perfectly!
+
+Available commands:
+• /test - Test bot response
+• /help - Get help information
+
+Bot is ready to forward files!"""
+            
+            await message.reply(welcome_text)
+            print("✅ Welcome message sent successfully")
         except Exception as e:
-            print(f"❌ Error sending response: {e}")
+            print(f"❌ Error sending welcome message: {e}")
             import traceback
             traceback.print_exc()
 
     @app.on_message(filters.command("test"))
     async def test(client, message: Message):
-        print(f"=== RECEIVED /test FROM USER {message.from_user.id} ===")
+        print(f"=== RECEIVED /test FROM USER {message.from_user.id} ({message.from_user.username or 'No username'}) ===")
         try:
-            response = "✅ Test Successful!\n\nBot is responding correctly!\n\nAvailable commands:\n• /start - Welcome message\n• /test - Test bot response\n• /help - Get help"
+            response = f"""✅ Test Successful!
+
+User Info:
+• ID: {message.from_user.id}
+• Name: {message.from_user.first_name}
+• Username: @{message.from_user.username or 'Not set'}
+
+Bot Status: ✅ Online and responding!
+
+Available commands:
+• /start - Welcome message
+• /test - Test bot response  
+• /help - Get help"""
+            
             await message.reply(response)
             print("✅ Test response sent successfully")
         except Exception as e:
@@ -44,15 +67,40 @@ if app:
 
     @app.on_message(filters.command("help"))
     async def help_cmd(client, message: Message):
-        print(f"=== RECEIVED /help FROM USER {message.from_user.id} ===")
+        print(f"=== RECEIVED /help FROM USER {message.from_user.id} ({message.from_user.username or 'No username'}) ===")
         try:
-            await message.reply("📚 Help Menu:\n\nThis is Serena Forward Bot!\n\nCommands:\n• /start - Start the bot\n• /test - Test bot functionality\n• /help - Show this help")
+            help_text = """📚 Serena Forward Bot Help
+
+Commands:
+• /start - Show welcome message
+• /test - Test if bot is responding
+• /help - Show this help message
+
+How to use:
+1. Join our channel first
+2. Use /batch <channel> to set source
+3. Use /forward <start_id> <count> to forward files
+
+For support: @technicalserena"""
+            
+            await message.reply(help_text)
             print("✅ Help response sent successfully")
         except Exception as e:
             print(f"❌ Error sending help response: {e}")
             import traceback
             traceback.print_exc()
 
+    # Echo handler for debugging
+    @app.on_message(filters.text & ~filters.command(["start", "test", "help"]))
+    async def echo(client, message: Message):
+        print(f"=== RECEIVED TEXT MESSAGE FROM USER {message.from_user.id}: '{message.text}' ===")
+        try:
+            await message.reply(f"Echo: {message.text}\n\nI received your message! ✅")
+            print("✅ Echo response sent")
+        except Exception as e:
+            print(f"❌ Error sending echo response: {e}")
+
     print("✅ All handlers registered successfully!")
+    
 else:
     print("❌ App not available, handlers not registered")
