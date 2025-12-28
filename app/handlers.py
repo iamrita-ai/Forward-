@@ -11,30 +11,13 @@ from app.main import app
 
 active_tasks = {}
 
-# Import utils functions inside handlers to avoid circular imports
-async def forward_media_batch(client, message, chat, start_id, count, task_id):
-    from app.utils import forward_media_batch as util_forward
-    await util_forward(client, message, chat, start_id, count, task_id)
-
-async def is_user_subscribed(client, message):
-    from app.utils import is_user_subscribed as util_check
-    return await util_check(client, message)
-
-def save_user(user):
-    from app.utils import save_user as util_save
-    util_save(user)
-
-async def check_bot_status(message):
-    from app.utils import check_bot_status as util_check_status
-    return await util_check_status(message)
-
-async def toggle_bot_status():
-    from app.utils import toggle_bot_status as util_toggle
-    return await util_toggle()
-
 @app.on_message(filters.command("start"))
 async def start(client, message: Message):
+    from app.utils import check_bot_status, is_user_subscribed
     if not await check_bot_status(message):
+        return
+    
+    if not await is_user_subscribed(client, message):
         return
     
     keyboard = InlineKeyboardMarkup([
@@ -56,14 +39,9 @@ Use:
 
 @app.on_message(filters.command("batch"))
 async def batch_set(client, message: Message):
-    if not await check_bot_status(message):
-        from app.utils import is_user_subscribed
-        if not await is_user_subscribed(client, message):
-            return
-    else:
-        from app.utils import is_user_subscribed
-        if not await is_user_subscribed(client, message):
-            return
+    from app.utils import check_bot_status, is_user_subscribed
+    if not await check_bot_status(message) or not await is_user_subscribed(client, message):
+        return
         
     try:
         chat = message.text.split()[1]
@@ -74,14 +52,9 @@ async def batch_set(client, message: Message):
 
 @app.on_message(filters.command("forward"))
 async def forward_files(client, message: Message):
-    if not await check_bot_status(message):
-        from app.utils import is_user_subscribed
-        if not await is_user_subscribed(client, message):
-            return
-    else:
-        from app.utils import is_user_subscribed
-        if not await is_user_subscribed(client, message):
-            return
+    from app.utils import check_bot_status, is_user_subscribed, forward_media_batch
+    if not await check_bot_status(message) or not await is_user_subscribed(client, message):
+        return
         
     user_id = message.from_user.id
     if user_id not in active_tasks:
@@ -99,12 +72,11 @@ async def forward_files(client, message: Message):
 
     from app.database import add_task
     await add_task(user_id, task_id)
-    
-    from app.utils import forward_media_batch
     await forward_media_batch(client, message, chat, start_id, count, task_id)
 
 @app.on_message(filters.command("cancel"))
 async def cancel_forward(client, message: Message):
+    from app.utils import check_bot_status
     if not await check_bot_status(message):
         return
         
@@ -116,6 +88,7 @@ async def cancel_forward(client, message: Message):
 
 @app.on_message(filters.command("help"))
 async def help_cmd(client, message: Message):
+    from app.utils import check_bot_status
     if not await check_bot_status(message):
         return
         
@@ -137,10 +110,11 @@ async def help_cmd(client, message: Message):
 
 @app.on_message(filters.command("stats"))
 async def stats(client, message: Message):
-    if not await check_bot_status(message) or message.from_user.id not in OWNER_IDS:
+    from app.utils import check_bot_status
+    from app.database import get_stats
+    if not await check_bot_status(message) or message.from_user.id not in [int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]:
         return await message.reply("🚫 Admin only command.")
         
-    from app.database import get_stats
     stats_data = await get_stats()
     await message.reply(f"""
 📊 Bot Stats:
@@ -151,23 +125,25 @@ async def stats(client, message: Message):
 
 @app.on_message(filters.command("users"))
 async def list_users(client, message: Message):
-    if not await check_bot_status(message) or message.from_user.id not in OWNER_IDS:
+    from app.utils import check_bot_status
+    from app.database import get_all_users
+    if not await check_bot_status(message) or message.from_user.id not in [int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]:
         return await message.reply("🚫 Admin only command.")
         
-    from app.database import get_all_users
     users = await get_all_users()
     response = "\n".join([f"- [{u['username']}](tg://user?id={u['id']}) ({u['id']})" for u in users])
     await message.reply(response, disable_web_page_preview=True)
 
-@app.on_message(filters.command("broadcast") & filters.user(OWNER_IDS))
+@app.on_message(filters.command("broadcast") & filters.user([int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]))
 async def broadcast(client, message: Message):
+    from app.utils import check_bot_status
+    from app.database import get_all_users
     if not await check_bot_status(message):
         return
         
     if not message.reply_to_message:
         return await message.reply("Please reply to a message to broadcast.")
         
-    from app.database import get_all_users
     users = await get_all_users()
     success = 0
     failed = 0
@@ -181,14 +157,14 @@ async def broadcast(client, message: Message):
             
     await message.reply(f"Broadcast completed!\nSuccess: {success}\nFailed: {failed}")
 
-@app.on_message(filters.command("settings") & filters.user(OWNER_IDS))
+@app.on_message(filters.command("settings") & filters.user([int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]))
 async def settings_menu(client, message: Message):
+    from app.utils import check_bot_status
+    from app.database import get_output_channel, get_bot_status
     if not await check_bot_status(message):
         return
         
-    from app.database import get_output_channel
     output_channel = await get_output_channel()
-    from app.database import get_bot_status
     current_status = await get_bot_status()
     status_text = "ON" if current_status == "on" else "OFF"
     
@@ -203,17 +179,17 @@ async def settings_menu(client, message: Message):
 
 @app.on_callback_query()
 async def callback_handler(client, query: CallbackQuery):
+    from app.database import reset_output_channel, get_bot_status, set_bot_status
     if query.data == "set_channel":
         await query.message.edit_text("Please send the channel ID where files should be forwarded:")
         # We'll handle the next message in another handler
     elif query.data == "reset_channel":
-        from app.database import reset_output_channel
         await reset_output_channel()
         await query.message.edit_text("✅ Output channel has been reset!")
     elif query.data == "toggle_status":
-        from app.utils import toggle_bot_status
-        new_status = await toggle_bot_status()
-        status_text = "ON" if new_status == "on" else "OFF"
+        current_status = await get_bot_status()
+        new_status = "off" if current_status == "on" else "on"
+        await set_bot_status(new_status)
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🔄 Set Output Channel", callback_data="set_channel")],
             [InlineKeyboardButton("🗑 Reset Output Channel", callback_data="reset_channel")],
@@ -221,23 +197,23 @@ async def callback_handler(client, query: CallbackQuery):
         ])
         await query.message.edit_text("⚙️ Bot Settings:", reply_markup=keyboard)
 
-@app.on_message(filters.private & filters.user(OWNER_IDS) & filters.regex(r"^-?\d+$"))
+@app.on_message(filters.private & filters.user([int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]) & filters.regex(r"^-?\d+$"))
 async def handle_channel_input(client, message: Message):
+    from app.database import set_output_channel
     try:
         channel_id = int(message.text)
-        from app.database import set_output_channel
         await set_output_channel(channel_id)
         await message.reply("✅ Output channel has been set!")
     except ValueError:
         await message.reply("Invalid channel ID. Please send a valid numeric ID.")
 
-@app.on_message(filters.command("on") & filters.user(OWNER_IDS))
+@app.on_message(filters.command("on") & filters.user([int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]))
 async def turn_on(client, message: Message):
-    from app.utils import toggle_bot_status
-    await toggle_bot_status()
+    from app.database import set_bot_status
+    await set_bot_status("on")
     await message.reply("🟢 Bot is now ON!")
 
-@app.on_message(filters.command("stop") & filters.user(OWNER_IDS))
+@app.on_message(filters.command("stop") & filters.user([int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]))
 async def turn_off(client, message: Message):
     from app.database import set_bot_status
     await set_bot_status("off")
