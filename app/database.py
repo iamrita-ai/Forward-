@@ -10,6 +10,26 @@ db = None
 
 def connect_db(uri):
     global client, db
+    try:
+        client = MongoClient(uri)
+        db = client["serena_bot"]
+        # Test connection
+        client.admin.command('ping')
+        print("✅ Connected to MongoDB successfully!")
+    except Exception as e:
+        print(f"❌ Failed to connect to MongoDB: {e}")
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from pymongo import MongoClient
+from datetime import datetime
+
+client = None
+db = None
+
+def connect_db(uri):
+    global client, db
     client = MongoClient(uri)
     db = client["serena_bot"]
 
