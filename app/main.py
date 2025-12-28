@@ -31,6 +31,30 @@ def check_initial_status():
         print(f"Error checking bot status: {e}")
         return True
 
+async def run_bot():
+    """Async function to run the bot"""
+    try:
+        from app.database import connect_db
+        connect_db(MONGO_URI)
+        print("Connected to MongoDB successfully!")
+        
+        # Import handlers to register them
+        from app import handlers
+        print("Handlers imported and registered")
+        
+        print("Starting Pyrogram client...")
+        await app.start()
+        print("✅ Bot started successfully!")
+        
+        # Keep running
+        while True:
+            await asyncio.sleep(3600)  # Sleep for 1 hour, keep alive
+            
+    except Exception as e:
+        print(f"Error in bot execution: {e}")
+        import traceback
+        traceback.print_exc()
+
 def start_bot():
     """Function to start the bot - called from web_server.py"""
     print("Starting bot function called...")
@@ -40,36 +64,17 @@ def start_bot():
         return
 
     try:
-        from app.database import connect_db
-        connect_db(MONGO_URI)
-        print("Connected to MongoDB successfully!")
-        
-        print("Attempting to start Pyrogram client...")
-        
-        # Import handlers to register them
-        from app import handlers
-        print("Handlers imported and registered")
-        
-        # Create new event loop for this thread
-        print("Creating new event loop...")
+        print("Creating event loop for bot...")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         print("Event loop created and set")
         
-        # Run the bot
-        print("Running app.run() with custom event loop...")
-        loop.run_until_complete(app.start())
-        print("Bot started successfully!")
-        
-        # Keep the loop running
-        print("Starting idle loop...")
-        loop.run_forever()
-        print("Bot run completed")
+        print("Running bot in event loop...")
+        loop.run_until_complete(run_bot())
+        print("Bot execution completed")
         
     except KeyboardInterrupt:
         print("Bot stopped by user")
-        if 'loop' in locals():
-            loop.stop()
     except Exception as e:
         print(f"Critical error starting bot: {e}")
         import traceback
