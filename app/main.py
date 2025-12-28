@@ -43,5 +43,8 @@ def start_bot():
     except Exception as e:
         print(f"Error starting bot: {e}")
 
+# Import handlers at module level to register them
+from app import handlers
+
 if __name__ == "__main__":
     start_bot()
