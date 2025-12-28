@@ -53,4 +53,7 @@ Done: 〘{humanbytes(current)} of {humanbytes(total)}〙
 ◌Speed🚀: 〘 {humanbytes(speed)}/s 〙
 ◌Time Left⏳: 〘 {TimeFormatter(time_to_completion)} 〙"""
 
-        await message.edit_text(progress_str)
+        try:
+            await message.edit_text(progress_str)
+        except:
+            pass
