@@ -6,7 +6,6 @@ import asyncio
 from pyrogram.errors import FloodWait, BadRequest
 from pyrogram.enums import ParseMode
 from config import LOG_CHANNEL, FORCE_SUB_LINK, CONTACT_LINKS, PROGRESS_DELAY
-from app.database import get_output_channel
 from app.progress import progress_for_pyrogram
 from time import time
 
@@ -32,7 +31,7 @@ async def check_bot_status(message):
     from app.database import get_bot_status
     status = await get_bot_status()
     if status == "off":
-        if message.from_user.id not in [int(x) for x in os.getenv("OWNER_IDS", "1598576202,6518065496").split(",")]:
+        if message.from_user.id not in [int(x) for x in os.getenv("OWNER_IDS", "").split(",") if x.strip()]:
             await message.reply("🔴 Bot is currently offline. Please try again later.")
             return False
     return True
@@ -45,6 +44,7 @@ async def toggle_bot_status():
     return new_status
 
 async def forward_media_batch(client, message, chat, start_id, count, task_id):
+    from app.database import get_output_channel
     sent_count = 0
     msg_id = start_id
     output_channel = await get_output_channel()
