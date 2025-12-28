@@ -28,7 +28,7 @@ async def get_stats():
     return {"total_users": total_users}
 
 async def get_all_users():
-    return list(db.users.find({}, {"_id": 0}))
+    return list(db.users.find({}, {"_id": 0, "id": 1, "username": 1}))
 
 async def set_output_channel(channel_id):
     db.settings.update_one(
@@ -54,3 +54,9 @@ async def set_bot_status(status):
         {"$set": {"status": status}},
         upsert=True
     )
+
+async def toggle_bot_status():
+    current_status = await get_bot_status()
+    new_status = "off" if current_status == "on" else "on"
+    await set_bot_status(new_status)
+    return new_status
