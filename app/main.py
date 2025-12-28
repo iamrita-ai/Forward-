@@ -33,9 +33,6 @@ def start_bot():
     if not check_initial_status():
         return
 
-    # Import handlers after app is created to avoid circular imports
-    from app import handlers
-
     try:
         connect_db(MONGO_URI)
         print("🚀 Serena Forward Bot Started!")
@@ -43,7 +40,7 @@ def start_bot():
     except Exception as e:
         print(f"Error starting bot: {e}")
 
-# Import handlers at module level to register them
+# Import handlers AFTER creating the app instance
 from app import handlers
 
 if __name__ == "__main__":
