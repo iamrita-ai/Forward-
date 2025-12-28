@@ -50,13 +50,26 @@ def start_bot():
         from app import handlers
         print("Handlers imported and registered")
         
+        # Create new event loop for this thread
+        print("Creating new event loop...")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        print("Event loop created and set")
+        
         # Run the bot
-        print("Running app.run()...")
-        app.run()
+        print("Running app.run() with custom event loop...")
+        loop.run_until_complete(app.start())
+        print("Bot started successfully!")
+        
+        # Keep the loop running
+        print("Starting idle loop...")
+        loop.run_forever()
         print("Bot run completed")
         
     except KeyboardInterrupt:
         print("Bot stopped by user")
+        if 'loop' in locals():
+            loop.stop()
     except Exception as e:
         print(f"Critical error starting bot: {e}")
         import traceback
