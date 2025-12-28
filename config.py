@@ -19,7 +19,7 @@ LOG_CHANNEL = int(os.getenv("LOG_CHANNEL", "-1003286415377"))
 FORCE_SUB_LINK = os.getenv("FORCE_SUB_LINK", "https://t.me/serenaunzipbot")
 
 # Contact Info
-CONTACT_LINKS = os.getenv("CONTACT_LINKS", "@technicalserena,@Xioqui_xin")
+CONTACT_LINKS = os.getenv("CONTACT_LINKS", "@technicalserena,@Xioqui_xin").split(",")
 
 # Limits
 FREE_LIMIT = int(os.getenv("FREE_LIMIT", 100))
@@ -27,3 +27,9 @@ PREMIUM_LIMIT = int(os.getenv("PREMIUM_LIMIT", 1000))
 
 # Images
 START_PIC = os.getenv("START_PIC", "https://graph.org/file/your_start_image.jpg")
+
+# Bot Control
+BOT_STATUS = os.getenv("BOT_STATUS", "on")  # "on" or "off"
+
+# Progress Settings
+PROGRESS_DELAY = int(os.getenv("PROGRESS_DELAY", "7"))  # seconds between updates
