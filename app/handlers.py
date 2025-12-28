@@ -53,12 +53,6 @@ if app:
             import traceback
             traceback.print_exc()
 
-    @app.on_message(filters.all)
-    async def catch_all(client, message: Message):
-        print(f"=== RECEIVED MESSAGE FROM USER {message.from_user.id} ===")
-        print(f"Message type: {type(message)}")
-        print(f"Message content: {message.text if hasattr(message, 'text') else 'Non-text message'}")
-
     print("✅ All handlers registered successfully!")
 else:
     print("❌ App not available, handlers not registered")
