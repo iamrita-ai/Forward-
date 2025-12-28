@@ -1,10 +1,11 @@
 import sys
 import os
+import asyncio
+import threading
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pyrogram import Client
 from config import *
-from app.database import connect_db
 
 print("Creating bot client...")
 
@@ -35,13 +36,30 @@ def start_bot():
     print("Starting bot function called...")
     
     if not check_initial_status():
+        print("Bot status check failed")
         return
 
     try:
+        from app.database import connect_db
         connect_db(MONGO_URI)
-        print("🚀 Serena Forward Bot Started!")
+        print("Connected to MongoDB successfully!")
+        
+        print("Attempting to start Pyrogram client...")
+        
+        # Import handlers to register them
+        from app import handlers
+        print("Handlers imported and registered")
+        
+        # Run the bot
+        print("Running app.run()...")
         app.run()
+        print("Bot run completed")
+        
+    except KeyboardInterrupt:
+        print("Bot stopped by user")
     except Exception as e:
-        print(f"Error starting bot: {e}")
+        print(f"Critical error starting bot: {e}")
+        import traceback
+        traceback.print_exc()
 
-print("Main module loaded")
+print("Main module fully loaded")
