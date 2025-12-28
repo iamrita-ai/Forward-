@@ -1,8 +1,14 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import asyncio
 from pyrogram.errors import FloodWait, BadRequest
 from pyrogram.enums import ParseMode
-from config import LOG_CHANNEL, FORCE_SUB_LINK, CONTACT_LINKS
-from app.database import db
+from config import LOG_CHANNEL, FORCE_SUB_LINK, CONTACT_LINKS, PROGRESS_DELAY
+from app.database import db, get_output_channel
+from app.progress import progress_for_pyrogram
+from time import time
 
 async def is_user_subscribed(client, message):
     try:
@@ -12,8 +18,8 @@ async def is_user_subscribed(client, message):
         save_user(message.from_user)
         return True
     except:
-        await message.reply("🔒 You must join [our channel](%s) to use this bot.\n\nContact: %s" % (
-            FORCE_SUB_LINK, CONTACT_LINKS), parse_mode=ParseMode.MARKDOWN)
+        contacts = ", ".join([f"@{c}" if c.startswith("@") else c for c in CONTACT_LINKS])
+        await message.reply(f"🔒 You must join [our channel]({FORCE_SUB_LINK}) to use this bot.\n\nContact: {contacts}", parse_mode=ParseMode.MARKDOWN)
         return False
 
 def save_user(user):
@@ -21,10 +27,45 @@ def save_user(user):
         "$set": {"id": user.id, "username": user.username, "first_name": user.first_name}
     }, upsert=True)
 
+async def check_bot_status(message):
+    status = await db.settings.find_one({"setting": "bot_status"})
+    if status and status.get("status", "on") == "off":
+        if message.from_user.id not in OWNER_IDS:
+            await message.reply("🔴 Bot is currently offline. Please try again later.")
+            return False
+    return True
+
+async def toggle_bot_status(new_status=None):
+    current_status = await db.settings.find_one({"setting": "bot_status"})
+    current = current_status["status"] if current_status else "on"
+    
+    if new_status:
+        final_status = new_status
+    else:
+        final_status = "off" if current == "on" else "on"
+    
+    db.settings.update_one(
+        {"setting": "bot_status"},
+        {"$set": {"status": final_status}},
+        upsert=True
+    )
+    return final_status
+
 async def forward_media_batch(client, message, chat, start_id, count, task_id):
     sent_count = 0
     msg_id = start_id
-
+    output_channel = await get_output_channel()
+    target_chat = output_channel if output_channel else message.chat.id
+    
+    # Pin the tracking message
+    progress_msg = await message.reply(f"📤 Starting forward operation...\nProgress: 0/{count}")
+    try:
+        await progress_msg.pin()
+    except:
+        pass
+    
+    start_time = time()
+    
     while sent_count < count:
         try:
             msg = await client.get_messages(chat, msg_id)
@@ -32,19 +73,37 @@ async def forward_media_batch(client, message, chat, start_id, count, task_id):
                 break
 
             if msg.media or msg.text or msg.sticker:
-                await msg.forward(message.chat.id)
+                # Show progress during download/upload
+                progress_message = await message.reply("Starting...")
+                
+                if msg.document:
+                    sent = await msg.forward(
+                        target_chat,
+                        progress=progress_for_pyrogram,
+                        progress_args=("📥 Downloading", progress_message, start_time)
+                    )
+                else:
+                    sent = await msg.forward(target_chat)
+                    
+                await progress_message.delete()
                 sent_count += 1
+                
+                # Update pinned message
+                try:
+                    await progress_msg.edit_text(f"📤 Forwarding in progress...\nProgress: {sent_count}/{count}")
+                except:
+                    pass
 
             msg_id += 1
             await asyncio.sleep(0.5)
 
         except FloodWait as e:
-            await asyncio.sleep(e.x + 5)
+            await asyncio.sleep(e.value + 5)
         except BadRequest:
             msg_id += 1
         except Exception as e:
             print(str(e))
             break
 
-    await message.reply(f"✅ Sent {sent_count}/{count} items.")
+    await progress_msg.edit_text(f"✅ Successfully forwarded {sent_count}/{count} items!")
     db.tasks.delete_one({"task_id": task_id})
